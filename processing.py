@@ -49,7 +49,6 @@ Plan_Attributes_df = pd.read_csv("dataset/PlanAttributes.csv", low_memory=False)
 Rate_df = pd.read_csv("dataset/Rate.csv", low_memory=False) 
 
 # Definimos columnas de interés
-General_cols = ["PlanId", "StateCode"] # Nos van a servir para unir los 3 datasets
-Costshare_cols = ["BenefitName", "CopayInnTier1", "CoinsInnTier1", "IsCovered"]
-Rate_cols = ["RatingAreaId", "Age", "Tobacco", "IndividualRate"] 
-Plan_cols = ["MetalLevel", "PlanType", "IssuerActuarialValue", "TEHBDedInnTier1Individual", "TEHBInnTier1IndividualMOOP"]
+Costshare_cols = ["PlanId", "StateCode", "BenefitName", "CopayInnTier1", "CoinsInnTier1", "IsCovered"]
+Rate_cols = ["PlanId", "StateCode", "RatingAreaId", "Age", "Tobacco", "IndividualRate"] 
+Plan_cols = ["PlanId", "StateCode", "MetalLevel", "PlanType", "IssuerActuarialValue", "TEHBDedInnTier1Individual", "TEHBInnTier1IndividualMOOP"]
