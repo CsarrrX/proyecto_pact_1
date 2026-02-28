@@ -44,9 +44,9 @@ import matplotlib as plt
 
 # %%
 # Definimos columnas de interés
-CostShare_cols = ["PlanId", "StateCode", "BenefitName", "CopayInnTier1", "CoinsInnTier1", "IsCovered"]
-Rate_cols = ["PlanId", "StateCode", "RatingAreaId", "Age", "Tobacco", "IndividualRate"] 
-Plan_cols = ["PlanId", "StateCode", "MetalLevel", "PlanType", "IssuerActuarialValue", "TEHBDedInnTier1Individual", "TEHBInnTier1IndividualMOOP"]
+CostShare_cols = ["PlanId", "BusinessYear", "StateCode", "BenefitName", "CopayInnTier1", "CoinsInnTier1", "IsCovered"]
+Rate_cols = ["PlanId", "BusinessYear", "StateCode", "RatingAreaId", "Age", "Tobacco", "IndividualRate"] 
+Plan_cols = ["PlanId", "BusinessYear", "StateCode", "MetalLevel", "PlanType", "IssuerActuarialValue", "TEHBDedInnTier1Individual", "TEHBInnTier1IndividualMOOP"]
 
 # Limpieza de datos utilizables
 CostShare_df = pd.read_csv("dataset/BenefitsCostSharing.csv", usecols=CostShare_cols) 
