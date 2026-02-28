@@ -43,12 +43,13 @@ import matplotlib as plt
 #    * Calidad de la Información: Se eliminaron columnas con una tasa de valores nulos superior al 80%, asegurando que cada variable incluida aporte información robusta al análisis final.
 
 # %%
-# Limpieza de datos utilizables
-CostShare_df = pd.read_csv("dataset/BenefitsCostSharing.csv", low_memory=False) 
-Plan_Attributes_df = pd.read_csv("dataset/PlanAttributes.csv", low_memory=False) 
-Rate_df = pd.read_csv("dataset/Rate.csv", low_memory=False) 
-
 # Definimos columnas de interés
-Costshare_cols = ["PlanId", "StateCode", "BenefitName", "CopayInnTier1", "CoinsInnTier1", "IsCovered"]
+CostShare_cols = ["PlanId", "StateCode", "BenefitName", "CopayInnTier1", "CoinsInnTier1", "IsCovered"]
 Rate_cols = ["PlanId", "StateCode", "RatingAreaId", "Age", "Tobacco", "IndividualRate"] 
 Plan_cols = ["PlanId", "StateCode", "MetalLevel", "PlanType", "IssuerActuarialValue", "TEHBDedInnTier1Individual", "TEHBInnTier1IndividualMOOP"]
+
+# Limpieza de datos utilizables
+CostShare_df = pd.read_csv("dataset/BenefitsCostSharing.csv", usecols=CostShare_cols) 
+Rate_df = pd.read_csv("dataset/Rate.csv", usecols=Rate_cols) 
+Plan_Attributes_df = pd.read_csv("dataset/PlanAttributes.csv", usecols=Plan_cols) 
+
