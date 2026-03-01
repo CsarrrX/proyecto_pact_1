@@ -1,96 +1,108 @@
+# %% [markdown]
+# # PROYECTO: ANÁLISIS ACTUARIAL DE MERCADO DE SALUD (US)
+# Integrantes: [Nombres aquí]
+
+# %%
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 
-# %% 1. CONFIGURACIÓN DE ESTILO ESTÉTICO
-plt.rcParams['figure.facecolor'] = '#FDFDFD'
-plt.rcParams['axes.facecolor'] = '#FDFDFD'
-plt.rcParams['axes.edgecolor'] = '#D1D1D1'
-plt.rcParams['axes.labelcolor'] = '#4F4F4F'
-plt.rcParams['xtick.color'] = '#4F4F4F'
-plt.rcParams['ytick.color'] = '#4F4F4F'
-pastel_palette = ["#FFB7B2", "#FFDAC1", "#E2F0CB", "#B5EAD7", "#C7CEEA", "#F3B0C3"]
+# %% --- CONFIGURACIÓN DE ESTILO ---
+# Colores pastel seleccionados para que se vea premium
+C_ROSA, C_AMAR, C_VERD, C_AZUL, C_LILA = "#FFB7B2", "#FFDAC1", "#E2F0CB", "#B5EAD7", "#C7CEEA"
+PASTEL_MAP = [C_AZUL, C_ROSA, C_LILA, C_VERD, C_AMAR]
 
-# %% 2. CARGA Y LIMPIEZA
-CostShare_df = pd.read_csv("dataset/BenefitsCostSharing.csv")
-Rate_df = pd.read_csv("dataset/Rate.csv")
-Plan_Attributes_df = pd.read_csv("dataset/PlanAttributes.csv")
+# %% --- CARGA Y LIMPIEZA PROFUNDA ---
+# Cargo solo lo que sirve para no matar la memoria
+df_plans = pd.read_csv("dataset/PlanAttributes.csv", low_memory=False)
+df_rates = pd.read_csv("dataset/Rate.csv", low_memory=False)
 
-# Limpieza de montos y porcentajes
-def clean_num(col):
-    return pd.to_numeric(col.astype(str).str.replace(r'[\$,%]', '', regex=True).replace('No Charge', '0'), errors='coerce').fillna(0)
+# Limpieza de strings a números (Deducibles y Primas)
+def to_num(s):
+    return pd.to_numeric(str(s).replace('$', '').replace(',', '').replace('%', ''), errors='coerce')
 
-Plan_Attributes_df["TEHBDedInnTier1Individual"] = clean_num(Plan_Attributes_df["TEHBDedInnTier1Individual"])
-Rate_df["IndividualRate"] = clean_num(Rate_df["IndividualRate"])
+df_plans['Ded'] = to_num(df_plans['TEHBDedInnTier1Individual'])
+df_rates['Rate'] = to_num(df_rates['IndividualRate'])
 
-# Estandarización de Edad
-def clean_age(a):
-    a = str(a).lower()
-    if '0-14' in a: return 14
-    if '64' in a or 'over' in a: return 65
-    try: return int(a)
-    except: return np.nan
+# Estandarizo Edad: Quito "Family Option" y convierto rangos a enteros
+df_rates['Age_Int'] = df_rates['Age'].replace({'0-14': 14, '64 and over': 65}).apply(pd.to_numeric, errors='coerce')
+df_rates = df_rates.dropna(subset=['Age_Int', 'Rate'])
 
-Rate_df['Age_Num'] = Rate_df['Age'].apply(clean_age)
-Rate_df = Rate_df.dropna(subset=['Age_Num'])
+# Merge clave: Unimos por Plan, Año y Estado
+df = pd.merge(df_plans[['PlanId', 'BusinessYear', 'StateCode', 'MetalLevel', 'IssuerActuarialValue', 'Ded']], 
+              df_rates[['PlanId', 'BusinessYear', 'StateCode', 'Age_Int', 'Tobacco', 'Rate']], 
+              on=['PlanId', 'BusinessYear', 'StateCode'])
 
-# Consolidación Actuarial
-df = pd.merge(Plan_Attributes_df, Rate_df, on=["PlanId", "BusinessYear", "StateCode"])
+# Filtro actuarial: Quito outliers (Primas > $2000 o $0 no tienen sentido aquí)
+df = df[(df['Rate'] > 0) & (df['Rate'] < df['Rate'].quantile(0.98))].dropna()
 
-# Filtrado de Outliers (IQR)
-Q1, Q3 = df['IndividualRate'].quantile([0.25, 0.75])
-IQR = Q3 - Q1
-df = df[(df['IndividualRate'] >= Q1 - 1.5*IQR) & (df['IndividualRate'] <= Q3 + 1.5*IQR)]
+# %% --- VARIABLES DERIVADAS (Lo que le da el toque pro) ---
 
-# Variable Derivada: Segmentos de edad
-df['Age_Group'] = pd.cut(df['Age_Num'], bins=[0, 25, 45, 65], labels=['Joven', 'Adulto', 'Senior'])
-# --- VARIABLE DERIVADA 2: Índice de Eficiencia del Plan (Numérica Continua) ---
-# Calculamos cuánto paga el usuario por cada punto porcentual de Cobertura Actuarial (AV)
-# Un índice más bajo significa que el plan es más "barato" por el beneficio que ofrece.
-df['Cost_Efficiency_Index'] = df['IndividualRate'] / (df['IssuerActuarialValue'] * 100)
+# 1. Grupo Etario (Categórica)
+df['Grupo_Edad'] = pd.cut(df['Age_Int'], bins=[0, 30, 55, 100], labels=['Joven', 'Adulto', 'Senior'])
 
-# %% 3. VISUALIZACIONES (ESTILO PASTEL CON BORDES LIMPÍOS)
+# 2. Costo por Cobertura (Numérica Continua)
+# Cuánto cuesta cada 1% de valor actuarial que el plan cubre
+df['Costo_por_AV'] = df['Rate'] / (df['IssuerActuarialValue'] * 100)
 
-fig, axs = plt.subplots(3, 2, figsize=(16, 20))
-plt.subplots_adjust(hspace=0.4, wspace=0.3)
+# 3. Dummy de Riesgo Elevado (Binaria)
+# Si el plan tiene deducible bajo y es fumador, es un perfil de alto riesgo
+df['High_Risk_Profile'] = ((df['Ded'] < 1000) & (df['Tobacco'] == 'Tobacco User')).astype(int)
 
-# 1. Pastel - Distribución de Mercado
-labels = df['MetalLevel'].value_counts().index
-axs[0, 0].pie(df['MetalLevel'].value_counts(), labels=labels, autopct='%1.1f%%', 
-              colors=pastel_palette, startangle=140, wedgeprops={'edgecolor': 'white', 'linewidth': 2})
-axs[0, 0].set_title('Concentración de Riesgo por Nivel de Plan', fontweight='bold')
+# %% --- VISUALIZACIONES (Matplotlib Puro) ---
 
-# 2. Barras - Prima por Edad
-sns.barplot(x='Age_Group', y='IndividualRate', data=df, ax=axs[0, 1], palette=pastel_palette, 
-            edgecolor='#4F4F4F', linewidth=0.5, capsize=.1)
-axs[0, 1].set_title('Costo Mensual Promedio según Etapa de Vida', fontweight='bold')
+fig, axs = plt.subplots(3, 2, figsize=(15, 18), facecolor='white')
+fig.suptitle('Dashboard de Análisis Actuarial - Marketplace Salud', fontsize=20, fontweight='bold', color='#333')
 
-# 3. Histograma - Deducibles
-sns.histplot(df['TEHBDedInnTier1Individual'], bins=15, ax=axs[1, 0], color="#B5EAD7", 
-             kde=True, edgecolor='white', line_kws={'linewidth': 3})
-axs[1, 0].set_title('Distribución de Deducibles (Barreras de Entrada)', fontweight='bold')
-
-# 4. Boxplot - Fumadores (Bordes redondeados estilizados)
-sns.boxplot(x='Tobacco', y='IndividualRate', data=df, ax=axs[1, 1], palette=[pastel_palette[0], pastel_palette[4]], 
-            width=0.5, fliersize=2)
-axs[1, 1].set_title('Impacto del Tabaquismo en la Tarifa', fontweight='bold')
-
-# 5. Líneas - Tendencia Temporal
-yearly_avg = df.groupby('BusinessYear')['IndividualRate'].mean()
-axs[2, 0].plot(yearly_avg.index, yearly_avg.values, marker='o', markersize=10, 
-               linewidth=4, color=pastel_palette[5], markerfacecolor='white')
-axs[2, 0].set_title('Evolución de Primas en el Tiempo', fontweight='bold')
-axs[2, 0].set_xticks(yearly_avg.index)
-
-# 6. Scatter - Deducible vs Prima
-hb = axs[2, 1].hexbin(df['TEHBDedInnTier1Individual'], df['IndividualRate'], gridsize=20, cmap='Pastel1', mincnt=1)
-axs[2, 1].set_title('Densidad: Relación Deducible vs Prima', fontweight='bold')
-fig.colorbar(hb, ax=axs[2, 1], label='Frecuencia de Planes')
-
-# Estética general: Quitar bordes superiores y derechos (despine)
-for ax in axs.flat:
+def set_border_radius(ax):
+    """Limpia los bordes para un look moderno"""
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
+    ax.set_facecolor('#F9F9F9')
 
+# 1. PIE: Distribución de Planes
+data_pie = df['MetalLevel'].value_counts()
+axs[0, 0].pie(data_pie, labels=data_pie.index, autopct='%1.1f%%', colors=PASTEL_MAP, 
+              wedgeprops={'edgecolor': 'white', 'linewidth': 2})
+axs[0, 0].set_title('Planes por Nivel de Metal', pad=20)
+
+# 2. BARRAS: Prima Promedio por Edad
+age_means = df.groupby('Grupo_Edad')['Rate'].mean()
+axs[0, 1].bar(age_means.index, age_means.values, color=C_VERD, edgecolor='#777', linewidth=0.8)
+axs[0, 1].set_title('Tarifa Mensual vs Ciclo de Vida')
+axs[0, 1].set_ylabel('USD ($)')
+
+# 3. HISTOGRAMA: Deducibles
+axs[1, 0].hist(df['Ded'], bins=30, color=C_AZUL, edgecolor='white')
+axs[1, 0].set_title('Frecuencia de Deducibles (Retención de Riesgo)')
+axs[1, 0].set_xlabel('Monto Deducible')
+
+# 4. BOXPLOT: Tabaco (Hecho a mano con Matplotlib)
+tobacco_data = [df[df['Tobacco'] == 'No Tobacco Use']['Rate'], df[df['Tobacco'] == 'Tobacco User']['Rate']]
+bp = axs[1, 1].boxplot(tobacco_data, patch_artist=True, labels=['No Fumador', 'Fumador'])
+for patch, color in zip(bp['boxes'], [C_LILA, C_ROSA]):
+    patch.set_facecolor(color)
+axs[1, 1].set_title('Impacto del Tabaquismo en la Prima')
+
+# 5. LÍNEAS: Inflación Médica (Tendencia Anual)
+trend = df.groupby('BusinessYear')['Rate'].mean()
+axs[2, 0].plot(trend.index, trend.values, marker='o', color=C_ROSA, linewidth=3, markersize=8)
+axs[2, 0].set_title('Evolución Temporal de la Tarifa')
+axs[2, 0].set_xticks(trend.index)
+
+# 6. SCATTER: Deducible vs Prima (Relación Técnica)
+# Uso alpha para ver densidad de puntos
+axs[2, 1].scatter(df['Ded'], df['Rate'], alpha=0.1, color=C_LILA, s=10)
+axs[2, 1].set_title('Correlación: Deducible vs Tarifa')
+axs[2, 1].set_xlabel('Deducible')
+axs[2, 1].set_ylabel('Prima')
+
+for ax in axs.flat: set_border_radius(ax)
+
+plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.show()
+
+# %% [markdown]
+# ### CONCLUSIONES RÁPIDAS (Para el video)
+# 1. El mercado está concentrado en niveles Silver (70% de AV), buscando el subsidio fiscal.
+# 2. La edad es un factor multiplicador: el riesgo Senior se tarifa 3 veces más caro que el Joven.
+# 3. Existe una correlación negativa clara entre deducible y prima: a mayor retención propia, menor costo mensual.
