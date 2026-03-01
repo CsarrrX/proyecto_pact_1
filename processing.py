@@ -25,6 +25,16 @@ dataset["Uninsured Rate Change (2010-2015)"] = dataset["Uninsured Rate Change (2
 # Cambiamos las cantidades de dolares a enteros usables
 dataset["Average Monthly Tax Credit (2016)"] = dataset["Average Monthly Tax Credit (2016)"].str.replace("$", "").astype(int)
 
+# Rellenar los valores nulos con la media de sus respectivas columnas
+dataset['Medicaid Enrollment (2013)'] = dataset['Medicaid Enrollment (2013)'].fillna(dataset['Medicaid Enrollment (2013)'].mean())
+dataset['Medicaid Enrollment Change (2013-2016)'] = dataset['Medicaid Enrollment Change (2013-2016)'].fillna(dataset['Medicaid Enrollment Change (2013-2016)'].mean())
 
+# Cambios en el dataset
+print("-"*20 + " INFORMACIÓN DEL DATASET DESPUÉS DE LOS CAMBIOS " + "-"*20)
+print(dataset.info()) 
+print("\n")
 
+# %%
+# Variables derivadas 
 
+# 
