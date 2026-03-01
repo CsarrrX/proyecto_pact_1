@@ -1,7 +1,7 @@
 # %%
 import pandas as pd 
 import numpy as np 
-import matplotlib as plt 
+import matplotlib.pyplot as plt 
 
 # %% [markdown]
 #
@@ -52,4 +52,20 @@ Plan_cols = ["PlanId", "BusinessYear", "StateCode", "MetalLevel", "PlanType", "I
 CostShare_df = pd.read_csv("dataset/BenefitsCostSharing.csv", usecols=CostShare_cols) 
 Rate_df = pd.read_csv("dataset/Rate.csv", usecols=Rate_cols) 
 Plan_Attributes_df = pd.read_csv("dataset/PlanAttributes.csv", usecols=Plan_cols) 
+
+# %% 
+# Limpieza de NaNs
+# 1. CostShare 
+CostShare_df["CoinsInnTier1"] = pd.to_numeric(
+    CostShare_df["CoinsInnTier1"].astype(str).str.replace('%', '', regex=False), 
+    errors='coerce'
+) / 100
+
+CostShare_df["CopayInnTier1"] = pd.to_numeric(
+    CostShare_df["CopayInnTier1"].astype(str).str.replace(r'[\$,]', '', regex=True), 
+    errors='coerce'
+)
+
+
+
 
