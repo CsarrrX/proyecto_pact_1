@@ -93,4 +93,4 @@ dataset['Subsidy Dependence Ratio'] = (
     dataset['Marketplace Health Insurance Coverage (2016)']
 )
 
-
+dataset.to_csv("states_processed.csv", index=False)
