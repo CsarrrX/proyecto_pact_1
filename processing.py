@@ -40,17 +40,24 @@ dataset['Medicaid Enrollment Change (2013-2016)'] = dataset['Medicaid Enrollment
 # Para la columna booleana rellenar con la moda 
 dataset['State Medicaid Expansion (2016)'] = dataset['State Medicaid Expansion (2016)'].fillna(dataset['State Medicaid Expansion (2016)'].mode()[0])
 
-# Visualización de Outliers con Boxplots
-plt.figure(figsize=(10, 6))
+# Identificamos los outliers de manera visual
+plt.figure(figsize=(15, 6))
 
-# Creamos el boxplot
-plt.boxplot(dataset['Medicaid Enrollment (2016)'].dropna(), vert=False, patch_artist=True)
+Q1 = dataset['Medicaid Enrollment (2016)'].quantile(0.25)
+Q3 = dataset['Medicaid Enrollment (2016)'].quantile(0.75)
+IQR = Q3 - Q1
+limite_superior = Q3 + 1.5 * IQR
 
-# Añadimos títulos y etiquetas
-plt.title('Identificación visual de Outliers: Medicaid Enrollment (2016)')
-plt.xlabel('Número de Personas Inscritas')
-plt.yticks([1], ['Medicaid 2016'])
+colores = ['red' if x > limite_superior else 'blue' for x in dataset['Medicaid Enrollment (2016)']]
 
+plt.scatter(dataset['State'], dataset['Medicaid Enrollment (2016)'], c=colores, s=100, alpha=0.7)
+plt.axhline(y=limite_superior, color='r', linestyle='--', label=f'Límite de Outliers ({limite_superior:,.0f})')
+
+plt.title('Inscripciones en Medicaid por Estado (Outliers en Rojo)', fontsize=14)
+plt.ylabel('Número de Personas Inscritas', fontsize=12)
+plt.xticks(rotation=90, fontsize=8)
+plt.legend()
+plt.tight_layout()
 plt.show()
 
 # Cambios en el dataset
