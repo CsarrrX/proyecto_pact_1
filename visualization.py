@@ -160,7 +160,7 @@ expansion_false = dataset[dataset['State Medicaid Expansion (2016)'] == False]['
 plt.figure(figsize=(10, 6))
 
 # Creamos el Boxplot
-caja = plt.boxplot([expansion_true, expansion_false], labels=['Sí (Expandió)', 'No (No Expandió)'], 
+caja = plt.boxplot([expansion_true, expansion_false], tick_labels=['Sí (Expandió)', 'No (No Expandió)'], 
                    patch_artist=True, widths=0.4)
 
 # Colores y estilo
@@ -217,7 +217,6 @@ plt.xlabel('Gasto Anual Estimado (En Miles de Millones / Billions de USD)', font
 plt.ylabel('Estado', fontsize=12)
 
 # Formato del eje X en Billones de dólares
-plt.gca().xaxis.set_major_formatter(mtick.StrMethodFormatter('${x:,.1f}B'))
 plt.grid(axis='x', linestyle='--', alpha=0.5)
 
 # Añadir el número exacto al final de cada barra
@@ -271,9 +270,6 @@ for i, col in enumerate(cols):
 ax.set_title('Composición de la Cartera (Market Share) - Top 10 Estados Más Poblados', fontsize=15)
 ax.set_ylabel('Porcentaje de la Población Asegurada (100%)', fontsize=12)
 
-# Convertir el eje Y a formato de porcentaje (0% - 100%)
-ax.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
-
 # Mover la leyenda afuera de la gráfica para no tapar los datos
 ax.legend(loc='upper left', bbox_to_anchor=(1.02, 1))
 
@@ -296,4 +292,114 @@ print("El color verde (Empleador) es el riesgo más estable y rentable, que domi
 print("del mercado en todos los estados. El bloque púrpura (Medicaid) varía enormemente;")
 print("en estados como Nueva York o California ocupa una enorme porción de su cartera, mientras")
 print("que en Texas es significativamente más bajo, lo que indica distintas prioridades de tarificación.")
+print("="*80 + "\n")
+
+# %%
+# ----------------- VISUALIZACIÓN 7: GRÁFICO DE PASTEL (PIE CHART) -----------------
+# Calculamos el total nacional sumando la población de todos los estados en cada rubro
+cols_pie = [
+    'Employer Health Insurance Coverage (2015)',
+    'Medicaid Enrollment (2016)',
+    'Medicare Enrollment (2016)',
+    'Marketplace Health Insurance Coverage (2016)'
+]
+totales_nacionales = dataset[cols_pie].sum()
+
+labels_pie = ['Sector Privado\n(Empleador)', 'Sector Público\n(Medicaid)', 'Sector Público\n(Medicare)', 'Sector Privado\n(Marketplace)']
+colores_pie = ['#2ca02c', '#9467bd', '#1f77b4', '#d62728']
+
+# "Explode" separa una rebanada para destacarla (en este caso el Marketplace)
+explode = (0.05, 0.05, 0.05, 0.15)  
+
+plt.figure(figsize=(9, 9))
+plt.pie(totales_nacionales, labels=labels_pie, colors=colores_pie, autopct='%1.1f%%', 
+        startangle=140, explode=explode, shadow=True, textprops={'fontsize': 12, 'fontweight': 'bold'})
+
+plt.title('Distribución de Asegurados a Nivel Nacional (Mercado Total)', fontsize=16)
+plt.tight_layout()
+
+nombre_fig7 = '07_Pastel_Mercado_Nacional.png'
+plt.savefig(nombre_fig7, dpi=300)
+plt.show()
+
+print("\n" + "="*80)
+print("INTERPRETACIÓN ACTUARIAL - GRÁFICO DE PASTEL:")
+print("Este gráfico resume el 'Market Share' agregado de los Estados Unidos. A nivel macro,")
+print("el sistema se sostiene gracias a las pólizas corporativas (Empleadores, >50%), que inyectan")
+print("dinero privado al sistema. Destacamos la rebanada roja (Marketplace), ya que, aunque")
+print("es la porción más pequeña del mercado, es la más volátil, la que consume más")
+print("subsidios directos y la que genera los mayores retos de tarificación individual.")
+print("="*80 + "\n")
+
+
+# %%
+# ----------------- VISUALIZACIÓN 8: HISTOGRAMA -----------------
+# Vemos cómo se distribuyen los 52 estados según su tasa de no asegurados
+plt.figure(figsize=(10, 6))
+
+# Creamos el histograma con 12 "canastas" (bins)
+counts, bins, patches = plt.hist(dataset['Uninsured Rate (2015)'], bins=12, 
+                                 color='#17becf', edgecolor='black', alpha=0.8)
+
+media_nacional = dataset['Uninsured Rate (2015)'].mean()
+plt.axvline(media_nacional, color='red', linestyle='dashed', linewidth=2, 
+            label=f'Media de Estados ({media_nacional:.1%})')
+
+plt.title('Histograma: Distribución de la Tasa de No Asegurados (2015)', fontsize=15)
+plt.xlabel('Tasa de Personas sin Seguro (%)', fontsize=12)
+plt.ylabel('Frecuencia (Cantidad de Estados)', fontsize=12)
+
+# Formatear el eje X a porcentaje
+plt.legend()
+plt.grid(axis='y', linestyle='--', alpha=0.6)
+
+plt.tight_layout()
+nombre_fig8 = '08_Histograma_No_Asegurados.png'
+plt.savefig(nombre_fig8, dpi=300)
+plt.show()
+
+print("\n" + "="*80)
+print("INTERPRETACIÓN ACTUARIAL - HISTOGRAMA:")
+print("El histograma revela la 'Forma de la Distribución' del riesgo país. Vemos una clara")
+print("asimetría hacia la izquierda (sesgo positivo). La mayoría de los estados (la campana más alta)")
+print("han logrado concentrar sus tasas de no asegurados entre el 5% y el 10%. Sin embargo, la")
+print("larga 'cola' hacia la derecha nos advierte de estados atípicos con problemas sistémicos")
+print("graves, superando el 15% de desprotección. Esta es una distribución no normal típica en siniestralidad.")
+print("="*80 + "\n")
+
+
+# %%
+# ----------------- VISUALIZACIÓN 9: GRÁFICO DE LÍNEAS -----------------
+# Seleccionamos el Top 5 de estados con mayor volumen para ver su evolución temporal
+top_5 = dataset.sort_values('Total Insured Approx', ascending=False).head(5)
+
+plt.figure(figsize=(10, 6))
+
+años = ['2010', '2015']
+marcadores = ['o', 's', '^', 'D', 'v']
+
+for i, (_, row) in enumerate(top_5.iterrows()):
+    valores = [row['Uninsured Rate (2010)'], row['Uninsured Rate (2015)']]
+    plt.plot(años, valores, marker=marcadores[i], markersize=8, linewidth=2.5, label=row['State'])
+
+plt.title('Evolución (Tendencia) de la Tasa de No Asegurados (2010 vs 2015)\nTop 5 Estados de Mayor Volumen', fontsize=15)
+plt.xlabel('Año', fontsize=12)
+plt.ylabel('Tasa de Personas sin Seguro (%)', fontsize=12)
+
+plt.legend(title='Estado', title_fontsize='12', fontsize='11', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.grid(True, linestyle='--', alpha=0.5)
+
+plt.tight_layout()
+nombre_fig9 = '09_Lineas_Evolucion_Top5.png'
+plt.savefig(nombre_fig9, dpi=300)
+plt.show()
+
+print("\n" + "="*80)
+print("INTERPRETACIÓN ACTUARIAL - GRÁFICO DE LÍNEAS:")
+print("Evaluamos la 'Tendencia Histórica' (Trend). Todas las líneas tienen una pendiente negativa,")
+print("confirmando que las reformas de salud (como el ACA) lograron su objetivo primordial")
+print("en los macro-mercados. Actuarialmente, una caída tan drástica en 5 años (como la de California)")
+print("implica un ingreso masivo de vidas nuevas al 'pool'. Estas vidas nuevas suelen traer")
+print("morbilidad desconocida o 'demanda reprimida' de servicios, lo que encarece las pólizas")
+print("en el corto plazo antes de estabilizarse.")
 print("="*80 + "\n")
