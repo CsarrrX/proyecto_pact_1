@@ -1,5 +1,4 @@
 # %%
-import numpy as np 
 import matplotlib.pyplot as plt 
 import pandas as pd 
 
@@ -59,6 +58,7 @@ plt.xticks(rotation=90, fontsize=8)
 plt.legend()
 plt.tight_layout()
 plt.show()
+plt.savefig('scatter_outliers.png')
 
 # Cambios en el dataset
 print("-"*20 + " INFORMACIÓN DEL DATASET DESPUÉS DE LOS CAMBIOS " + "-"*20)
